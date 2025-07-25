@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>NSE Stocks High/Low</title>
+    <style>
+      table { border-collapse: collapse; width: 60%; margin: 32px auto; }
+      th, td { border: 1px solid #ccc; padding: 10px 16px; text-align: center; }
+      th { background: #f4f4f4; }
+      #loading { text-align: center; font-size: 1.2em; color: #444; margin-top: 24px; }
+    </style>
+  </head>
+  <body>
+    <h2 style="text-align:center;">NSE Stocks - Yesterday's High & Low</h2>
+    <div id="loading">Loading data…</div>
+    <table id="stock-table" style="display:none;">
+      <thead>
+        <tr>
+          <th>Stock</th>
+          <th>Low</th>
+          <th>High</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+      </tbody>
+    </table>
+    <script>
+      // List your NSE stock symbols (append ".NS")
+      const stockSymbols = [
+        "ICICIBANK.NS",
+        "SBIN.NS",
+        "RELIANCE.NS",
+        "INFY.NS",
+        "TCS.NS",
+        "ACC.NS",
+        "HDFCBANK.NS",
+        "AXISBANK.NS",
+        "LT.NS",
+        "ITC.NS"
+      ];
+
+      async function getYesterdayHighLow(symbol) {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          const result = data.chart?.result?.[0];
+          if (!result) return null;
+          const candles = result.indicators.quote[0];
+          const timestamps = result.timestamp;
+          if (!candles.high || candles.high.length < 2) return null;
+          const idx = candles.high.length - 2; // yesterday
+          return {
+            stock: symbol.replace('.NS', ''),
+            low: candles.low[idx],
+            high: candles.high[idx]
+          };
+        } catch (err) {
+          return null;
+        }
+      }
+
+      async function fillTable() {
+        const tbody = document.getElementById('table-body');
+        let hasData = false;
+        for (const symbol of stockSymbols) {
+          const data = await getYesterdayHighLow(symbol);
+          if (data) {
+            hasData = true;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${data.stock}</td>
+              <td>${data.low !== undefined ? data.low.toFixed(2) : '-'}</td>
+              <td>${data.high !== undefined ? data.high.toFixed(2) : '-'}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        }
+        document.getElementById('loading').style.display = 'none';
+        if (hasData) {
+          document.getElementById('stock-table').style.display = '';
+        } else {
+          document.getElementById('loading').textContent = 'No data available.';
+          document.getElementById('loading').style.display = '';
+        }
+      }
+
+      fillTable();
+    </script>
+  </body>
+</html>
